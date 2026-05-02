@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Booking → Planilha</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f3;
+      --bg3: #eeecea;
+      --text: #1a1a18;
+      --text2: #5c5b57;
+      --text3: #9c9a92;
+      --border: rgba(0,0,0,0.12);
+      --blue-bg: #e6f1fb;
+      --blue-text: #0c447c;
+      --blue-border: #185fa5;
+      --green-bg: #eaf3de;
+      --green-text: #27500a;
+      --red-bg: #fcebeb;
+      --red-text: #791f1f;
+      --amber-bg: #faeeda;
+      --amber-text: #633806;
+      --radius: 8px;
+      --font: -apple-system, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c;
+        --bg2: #2a2a28;
+        --bg3: #333330;
+        --text: #e8e6de;
+        --text2: #b4b2a9;
+        --text3: #6e6c65;
+        --border: rgba(255,255,255,0.1);
+        --blue-bg: #0c447c;
+        --blue-text: #b5d4f4;
+        --blue-border: #378add;
+        --green-bg: #27500a;
+        --green-text: #c0dd97;
+        --red-bg: #501313;
+        --red-text: #f7c1c1;
+        --amber-bg: #412402;
+        --amber-text: #fac775;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); font-size: 13px; color: var(--text); background: var(--bg); padding: 16px; }
+    h1 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+    .section { margin-bottom: 14px; }
+    label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+    input[type="text"] {
+      width: 100%; padding: 7px 10px; font-size: 13px; font-family: var(--font);
+      border: 0.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg2); color: var(--text); outline: none;
+    }
+    input[type="text"]:focus { border-color: var(--blue-border); }
+    .field-grid { display: grid; gap: 6px; }
+    .field-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: var(--radius);
+      background: var(--bg2); border: 0.5px solid var(--border);
+    }
+    .field-label { font-size: 11px; color: var(--text3); width: 110px; flex-shrink: 0; }
+    .field-value { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+    .field-empty { font-size: 12px; color: var(--text3); font-style: italic; }
+    .btn {
+      width: 100%; padding: 9px; font-size: 13px; font-weight: 500;
+      border: 0.5px solid var(--border); border-radius: var(--radius);
+      background: var(--bg2); color: var(--text); cursor: pointer;
+      font-family: var(--font); transition: background 0.15s;
+    }
+    .btn:hover { background: var(--bg3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: var(--blue-bg); color: var(--blue-text);
+      border-color: var(--blue-border);
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .status {
+      padding: 9px 12px; border-radius: var(--radius);
+      font-size: 12px; line-height: 1.5; display: none;
+    }
+    .status.info { background: var(--blue-bg); color: var(--blue-text); }
+    .status.success { background: var(--green-bg); color: var(--green-text); }
+    .status.error { background: var(--red-bg); color: var(--red-text); }
+    .status.warning { background: var(--amber-bg); color: var(--amber-text); }
+    .divider { border: none; border-top: 0.5px solid var(--border); margin: 14px 0; }
+    .row-found {
+      font-size: 12px; padding: 6px 10px;
+      border-radius: var(--radius);
+      background: var(--green-bg); color: var(--green-text);
+      margin-bottom: 10px; display: none;
+    }
+    .row-new {
+      font-size: 12px; padding: 6px 10px;
+      border-radius: var(--radius);
+      background: var(--amber-bg); color: var(--amber-text);
+      margin-bottom: 10px; display: none;
+    }
+    .config-section { margin-top: 16px; }
+    .config-toggle { font-size: 12px; color: var(--text3); cursor: pointer; text-decoration: underline; background: none; border: none; font-family: var(--font); padding: 0; }
+    .config-panel { display: none; margin-top: 10px; gap: 8px; flex-direction: column; }
+    .config-panel.open { display: flex; }
+    .step { font-size: 11px; color: var(--text3); }
+  </style>
+</head>
+<body>
+
+<h1>Booking → Planilha</h1>
+<p class="subtitle">Extrai os dados deste e-mail e atualiza o General Shipping</p>
+
+<div class="section">
+  <label>Referência do cliente (PO)</label>
+  <input type="text" id="poInput" placeholder="ex: ITS24803"/>
+</div>
+
+<button class="btn btn-primary" id="extractBtn" onclick="runExtraction()">
+  Extrair e atualizar planilha
+</button>
+
+<div style="height:10px"></div>
+
+<div id="statusBox" class="status"></div>
+<div id="rowFound" class="row-found"></div>
+<div id="rowNew" class="row-new"></div>
+
+<div id="previewSection" style="display:none">
+  <hr class="divider"/>
+  <div class="section">
+    <label>Dados extraídos</label>
+    <div class="field-grid" id="fieldGrid"></div>
+  </div>
+  <div style="height:10px"></div>
+  <button class="btn btn-primary" id="confirmBtn" onclick="confirmUpdate()">
+    Confirmar atualização
+  </button>
+</div>
+
+<hr class="divider"/>
+
+<div class="config-section">
+  <button class="config-toggle" onclick="toggleConfig()">⚙ Configurações</button>
+  <div class="config-panel" id="configPanel">
+    <div>
+      <label>Chave da API Claude</label>
+      <input type="text" id="apiKey" placeholder="sk-ant-..." oninput="saveConfig()"/>
+    </div>
+    <p class="step">Obtenha em console.anthropic.com → API Keys</p>
+    <div style="height:4px"></div>
+    <div>
+      <label>ID da planilha Google Sheets</label>
+      <input type="text" id="sheetId" oninput="saveConfig()"/>
+    </div>
+    <p class="step">O ID fica na URL: docs.google.com/spreadsheets/d/<strong>ID</strong>/edit</p>
+  </div>
+</div>
+
+<script>
+const SHEET_ID = '1t-xmgNCZyMKTqhYtNVLw8I5d6CLqzD6Xkdx6ikrP42Q';
+const SHEET_NAME = 'Finished';
+let extractedData = null;
+let targetRow = null;
+
+Office.onReady(() => {
+  loadConfig();
+  const po = detectPO();
+  if (po) document.getElementById('poInput').value = po;
+});
+
+function loadConfig() {
+  const key = localStorage.getItem('claude_api_key') || '';
+  const sid = localStorage.getItem('sheet_id') || SHEET_ID;
+  document.getElementById('apiKey').value = key;
+  document.getElementById('sheetId').value = sid;
+}
+
+function saveConfig() {
+  localStorage.setItem('claude_api_key', document.getElementById('apiKey').value.trim());
+  localStorage.setItem('sheet_id', document.getElementById('sheetId').value.trim());
+}
+
+function toggleConfig() {
+  document.getElementById('configPanel').classList.toggle('open');
+}
+
+function getApiKey() {
+  return document.getElementById('apiKey').value.trim() || localStorage.getItem('claude_api_key') || '';
+}
+
+function getSheetId() {
+  return document.getElementById('sheetId').value.trim() || SHEET_ID;
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('statusBox');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+  el.style.display = 'block';
+}
+
+function clearStatus() {
+  document.getElementById('statusBox').style.display = 'none';
+  document.getElementById('rowFound').style.display = 'none';
+  document.getElementById('rowNew').style.display = 'none';
+  document.getElementById('previewSection').style.display = 'none';
+}
+
+function detectPO() {
+  try {
+    const subj = Office.context.mailbox.item.subject || '';
+    const m = subj.match(/\b([A-Z]{2,5}\d{4,})\b/);
+    return m ? m[1] : '';
+  } catch(e) { return ''; }
+}
+
+function formatMonth(dateStr) {
+  const p = dateStr.split('/');
+  if (p.length === 3) return p[1].padStart(2,'0') + '/' + p[2];
+  return dateStr;
+}
+
+function calcTtime(etd, eta) {
+  try {
+    const [d1,m1,y1] = etd.split('/').map(Number);
+    const [d2,m2,y2] = eta.split('/').map(Number);
+    const diff = Math.round((new Date(y2,m2-1,d2) - new Date(y1,m1-1,d1)) / 86400000);
+    return diff > 0 ? String(diff) : '';
+  } catch(e) { return ''; }
+}
+
+async function getEmailBody() {
+  return new Promise((resolve, reject) => {
+    Office.context.mailbox.item.body.getAsync(
+      Office.CoercionType.Text,
+      { asyncContext: 'body' },
+      (result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          resolve(result.value);
+        } else {
+          reject(result.error);
+        }
+      }
+    );
+  });
+}
+
+async function runExtraction() {
+  const po = document.getElementById('poInput').value.trim();
+  if (!po) { setStatus('Informe a referência do cliente (PO) antes de continuar.', 'error'); return; }
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    setStatus('Configure sua chave da API Claude nas ⚙ Configurações abaixo.', 'warning');
+    document.getElementById('configPanel').classList.add('open');
+    return;
+  }
+
+  const btn = document.getElementById('extractBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processando...';
+  clearStatus();
+
+  try {
+    setStatus('Lendo e-mail...', 'info');
+    const body = await getEmailBody();
+    const subject = Office.context.mailbox.item.subject || '';
+    const fullText = subject + '\n' + body;
+
+    setStatus('Extraindo dados com IA...', 'info');
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `Extract these fields from this shipping booking confirmation email. Return ONLY a raw JSON object, no markdown, no explanation:
+{
+  "Month": "MM/YYYY from ETD date",
+  "FreightForwarder": "name of the freight forwarder or shipping agent company",
+  "BookingNumber": "booking/reservation number",
+  "Carrier": "shipping line / armador name",
+  "POL": "port of loading (Brazilian port)",
+  "POD": "port of discharge (destination port)",
+  "ETD": "dd/mm/yyyy",
+  "ETA": "dd/mm/yyyy",
+  "Ttime": "integer days between ETD and ETA"
+}
+
+Email content:
+${fullText}`
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(raw);
+
+    extractedData = {
+      Month: parsed.Month || '',
+      'Freight Forwarder': parsed.FreightForwarder || '',
+      'Booking number': parsed.BookingNumber || '',
+      Carrier: parsed.Carrier || '',
+      POL: parsed.POL || '',
+      POD: parsed.POD || '',
+      ETD: parsed.ETD || '',
+      ETA: parsed.ETA || '',
+      Ttime: parsed.Ttime ? String(parsed.Ttime) : ''
+    };
+
+    setStatus('Buscando PO na planilha...', 'info');
+
+    const findResp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        mcp_servers: [{ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1', name: 'google-drive' }],
+        messages: [{
+          role: 'user',
+          content: `Using Google Drive MCP, read spreadsheet ID "${getSheetId()}", sheet "${SHEET_NAME}". Find the row where column F (PO) contains or matches "${po}". Return ONLY JSON: {"found": true, "row": 5} or {"found": false}. No explanation.`
+        }]
+      })
+    });
+
+    const findData = await findResp.json();
+    const findRaw = (findData.content || []).filter(b => b.type === 'text').map(b => b.text).join('').replace(/```json|```/g,'').trim();
+
+    try {
+      const rowInfo = JSON.parse(findRaw);
+      targetRow = rowInfo.found ? rowInfo.row : null;
+
+      if (rowInfo.found) {
+        const rf = document.getElementById('rowFound');
+        rf.textContent = `PO encontrada na linha ${rowInfo.row} — os campos serão atualizados.`;
+        rf.style.display = 'block';
+      } else {
+        const rn = document.getElementById('rowNew');
+        rn.textContent = 'PO não encontrada — uma nova linha será adicionada.';
+        rn.style.display = 'block';
+      }
+    } catch(e) {
+      targetRow = null;
+      document.getElementById('rowNew').textContent = 'Não foi possível verificar a planilha — nova linha será criada.';
+      document.getElementById('rowNew').style.display = 'block';
+    }
+
+    renderPreview();
+    document.getElementById('statusBox').style.display = 'none';
+
+  } catch(e) {
+    setStatus('Erro: ' + e.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Extrair e atualizar planilha';
+}
+
+function renderPreview() {
+  const grid = document.getElementById('fieldGrid');
+  grid.innerHTML = Object.entries(extractedData).map(([k, v]) =>
+    `<div class="field-row">
+      <span class="field-label">${k}</span>
+      <span class="${v ? 'field-value' : 'field-empty'}">${v || 'não encontrado'}</span>
+    </div>`
+  ).join('');
+  document.getElementById('previewSection').style.display = 'block';
+}
+
+async function confirmUpdate() {
+  if (!extractedData) return;
+  const po = document.getElementById('poInput').value.trim();
+  const apiKey = getApiKey();
+
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Atualizando...';
+  setStatus('Enviando para o Google Sheets...', 'info');
+
+  const prompt = targetRow
+    ? `Using Google Drive MCP, update spreadsheet "${getSheetId()}", sheet "${SHEET_NAME}", row ${targetRow}. Set: A="${extractedData.Month}", O="${extractedData['Freight Forwarder']}", S="${extractedData['Booking number']}", T="${extractedData.Carrier}", U="${extractedData.POL}", V="${extractedData.POD}", Y="${extractedData.ETD}", AC="${extractedData.ETA}", AD="${extractedData.Ttime}". Confirm with row number.`
+    : `Using Google Drive MCP, append a new row to spreadsheet "${getSheetId()}", sheet "${SHEET_NAME}". Set: A="${extractedData.Month}", F="${po}", O="${extractedData['Freight Forwarder']}", S="${extractedData['Booking number']}", T="${extractedData.Carrier}", U="${extractedData.POL}", V="${extractedData.POD}", Y="${extractedData.ETD}", AC="${extractedData.ETA}", AD="${extractedData.Ttime}". Confirm row added.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        mcp_servers: [{ type: 'url', url: 'https://drivemcp.googleapis.com/mcp/v1', name: 'google-drive' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+
+    setStatus(
+      targetRow
+        ? `Linha ${targetRow} atualizada com sucesso!`
+        : 'Nova linha adicionada com sucesso!',
+      'success'
+    );
+    document.getElementById('previewSection').style.display = 'none';
+
+  } catch(e) {
+    setStatus('Erro ao atualizar: ' + e.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Confirmar atualização';
+}
+</script>
+</body>
+</html>
